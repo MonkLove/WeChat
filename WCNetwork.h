@@ -21,6 +21,7 @@ private:
     void handleOnline(WCJson& json, uint32_t peerip);
     void handleOnlineAck(WCJson& json, uint32_t peerip);
     void handleSend(WCJson& json);
+    void handleSendf(WCJson& json, uint32_t peerip);
 
 public:
     /* Singleton */

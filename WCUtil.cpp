@@ -3,6 +3,9 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/stat.h>
 #include "WCUtil.h"
 
 
@@ -60,4 +63,11 @@ bool WCUtil::isBroadcast(string ip)
     }else{
         return false;
     }
+}
+
+uint64_t WCUtil::getFileSize(const char *path)
+{
+    struct stat st;
+    lstat(path, &st);
+    return st.st_size;
 }

@@ -20,6 +20,8 @@ public:
 
     /* Judge whether the ip is a broadcast ip(e.g x.x.x.255) */
     static bool isBroadcast(string ip);
+
+    static uint64_t getFileSize(const char* path);
 };
 
 #endif // WCUTIL_H

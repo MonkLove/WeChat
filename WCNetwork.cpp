@@ -4,6 +4,7 @@
 #include <cstring>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include "WCFileRecv.h"
 #include "WCNetwork.h"
 #include "WCCore.h"
 #include "WCUtil.h"
@@ -48,6 +49,7 @@ WCNetwork* WCNetwork::instance()
 void* WCNetwork::msg_dispatch(void* arg)
 {
     pthread_detach(pthread_self());
+
     WCNetwork* THIS = WCNetwork::instance();
     THIS->_msg_dispatch(arg);
 }
@@ -80,8 +82,20 @@ void* WCNetwork::_msg_dispatch(void* arg)
             handleOnlineAck(json, addr.sin_addr.s_addr);
         }else if(cmd == WC_SEND){
             handleSend(json);
+        }else if(cmd == WC_SENDF){
+            handleSendf(json, addr.sin_addr.s_addr);
         }
     }
+}
+
+void WCNetwork::handleSendf(WCJson& json, uint32_t peerip)
+{
+    string name = json.get(WC_NAME);
+    string file = json.get(WC_FILE);
+    printf("ready to receive file %s, from %s\n", file.c_str(), name.c_str());
+
+    //recv
+    new WCFileRecv(file, peerip);
 }
 
 void WCNetwork::handleSend(WCJson& json)

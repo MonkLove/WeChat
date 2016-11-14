@@ -21,6 +21,7 @@ private:
     /* To handle user's commands */
     void cmdsend();
     void cmdlist();
+    void cmdsendf();
 
 public:
     WCInput();

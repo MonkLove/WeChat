@@ -57,6 +57,28 @@ void WCInput::cmdDispatch()
 #define DISPATCH(cmd, func) if(_cmds[0] == cmd) func()
     DISPATCH(WC_SEND, cmdsend);
     DISPATCH(WC_LIST, cmdlist);
+    DISPATCH(WC_SENDF, cmdsendf);
+}
+
+void WCInput::cmdsendf()
+{
+    if(_cmds.size() < 3){
+        printf("Usage : sendf <ip> <filename>\n");
+        return;
+    }
+
+    string& ip = _cmds[1];
+    string& file = _cmds[2];
+
+    //printf("ip : %s\n", ip.c_str());
+    //printf("file : %s\n", file.c_str());
+
+    WCJson json;
+    json.add(WC_CMD, WC_SENDF);
+    json.add(WC_NAME, WCCore::instance()->_name);
+    json.add(WC_FILE, file);
+
+    WCNetwork::instance()->send(json.print(), inet_addr(ip.c_str()));
 }
 
 void WCInput::cmdlist()
@@ -78,6 +100,7 @@ void WCInput::cmdlist()
 void WCInput::cmdsend()
 {
     if(_cmds.size() < 3){
+        printf("Usage : sendf <ip> <message>\n");
         return;
     }
 
