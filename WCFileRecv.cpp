@@ -80,25 +80,29 @@ void WCFileRecv::recvFile(uint32_t fd)
         if(strcmp(p, WC_FILEEOF) == 0)
             break;
 
-        if(strcmp(p, WC_SENTINEL) != 0)
+        if(strcmp(p, WC_SENTINEL) != 0)       // 1 sentinel
             return;
 
         p = getLine(fp);
         if(strcmp(p, WC_FILE_DIR) == 0){
             p = getLine(fp);
             mkdir(p, 0755);
-        }else if(strcmp(p, WC_FILE_REG) == 0){
-            p = getLine(fp);
-            FILE* f = fopen(p, "w");
+        }else if(strcmp(p, WC_FILE_REG) == 0){    // 2 file type
+            p = getLine(fp);                     // 3 file name
+            FILE* fptr = fopen(p, "w");
 
-            uint64_t filelen = atoll(getLine(fp));
+            uint64_t filelen = atoll(getLine(fp));  // 4 file length
             while(filelen > 0){
                 int readlen = filelen > sizeof(buf) ? sizeof(buf) : filelen;
                 int ret = fread(buf, 1, readlen, fp);
-                fwrite(buf, ret, 1, f);
+                if(ret > 0){
+                    printf("recv file content : %s\n", buf);
+                }
+                fwrite(buf, ret, 1, fptr);
                 filelen -= ret;
             }
-            fclose(f);
+            fclose(fptr);
+            break;
         }else{
             printf("Unknown file type\n");
             return;

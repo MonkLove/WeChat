@@ -115,7 +115,17 @@ void WCFileServer::recvData(fd_set& fds)
 void WCFileServer::sendFile(int fd, char* path)
 {
     //FILE* fp = fdopen(fd, "w");
+    _realPath[128] = {};
+    _relativePath[128] = {};
+    realpath(path, _realPath);  /* Get absolute path */
 
+    char* pos = rindex(_realPath, '/');
+    //*pos = 0;  /* Truncate and get absolute path */
+    memcpy(_relativePath, pos + 1, strlen(pos + 1));
+#if 0
+    *pos = '/';
+    *(pos -1) = '.';
+#endif
     // Change path ?
 	printf("send file..\n");
     struct stat st;
@@ -150,24 +160,32 @@ void WCFileServer::sendFileReg(int fd, char *path)
 
 
     fprintf(fp, "%s\n", WC_FILE_REG);
-    fprintf(fp, "%s\n", path);
-    fprintf(fp, "%llu\n", (long long unsigned)WCUtil::getFileSize(path));
+    fprintf(fp, "%s\n", _relativePath);
+    fprintf(fp, "%llu\n", (long long unsigned)WCUtil::getFileSize(_realPath));
+
+    printf("file size : %d\n", WCUtil::getFileSize(_realPath));
 
      fflush(fp);
 
-    char* buf[MAX_MSG_LEN];
-    FILE* f = fopen(path, "r");
+    char buf[MAX_MSG_LEN];
+    FILE* fptr = fopen(_realPath, "r");
+    if(fptr == NULL){
+        perror("fopen");
+    }
     while(1){
-        int ret = fread(buf, 1, sizeof(buf), f);
+        int ret = fread(buf, 1, sizeof(buf), fptr);
+        printf("read file : %s\n", buf);
+
         if(ret <= 0){
             break;
         }
         ret = fwrite(buf, ret, 1, fp);
+        fflush(fp);
         if(ret != 1){
             exit(1);
         }
     }
-    fclose(f);
+    fclose(fptr);
 }
 
 void WCFileServer::sendFileDir(int fd, char *path)
@@ -175,21 +193,23 @@ void WCFileServer::sendFileDir(int fd, char *path)
     FILE* fp = fdopen(fd, "w");
     fprintf(fp, "%s\n", WC_SENTINEL);
     fprintf(fp, "%s\n", WC_FILE_DIR);
-    fprintf(fp, "%s\n", path);
+    fprintf(fp, "%s\n", _relativePath);
 
-    DIR* dir = opendir(path);
+    DIR* dir = opendir(_realPath);
     struct dirent* entry;
-    char newpath[128] = {};
+    //char newpath[128] = {};
     while(entry = readdir(dir)){
         if(string(entry->d_name) == "." ||
                 string(entry->d_name) == "..")
             continue;
 
-        sprintf(newpath, "%s/%s", path,entry->d_name);
+      //  sprintf(newpath, "%s/%s", path,entry->d_name);
+        sprintf(_relativePath, "%s/%s", _relativePath, entry->d_name);
+        sprintf(_realPath, "%s/%s", _realPath, entry->d_name);
         if(entry->d_type == DT_DIR){
-            sendFileDir(fd, newpath);
+            sendFileDir(fd, _realPath);
         }else if(entry->d_type == DT_REG){
-            sendFileReg(fd, newpath);
+            sendFileReg(fd, _realPath);
         }
     }
     closedir(dir);

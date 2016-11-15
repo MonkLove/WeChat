@@ -12,6 +12,9 @@ private:
     fd_set _clifds;
     uint32_t _maxFds;
 
+    char _realPath[128];
+    char _relativePath[128];
+
     WCFileServer();
 
     int createSocket();
