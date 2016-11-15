@@ -44,22 +44,35 @@ void WCFileRecv::start()
         return;
     }
 
-    write(fd, _path.c_str(), strlen(_path.c_str()));
-    write(fd, "\n", 1);
+    err = write(fd, _path.c_str(), strlen(_path.c_str()));
+
+    printf("ack success -- %s\n", _path.c_str());
+
+    err = write(fd, "\n", 1);
+
+
+    printf("ret : %d\n", err);
 
     recvFile(fd);
 }
 
 char* WCFileRecv::getLine(FILE* fp)
 {
-   fgets(_buf, sizeof(_buf), fp);
+   char* err = fgets(_buf, sizeof(_buf), fp);
+   if(err == NULL){
+       perror("fgets");
+   }
    _buf[strlen(_buf) - 1] = 0;
    return _buf;
 }
 
 void WCFileRecv::recvFile(uint32_t fd)
 {
+    printf("start recv file ...\n");
     FILE* fp = fdopen(fd, "r");
+    if(fp == NULL){
+        perror("fdopen");
+    }
     char buf[MAX_MSG_LEN] = {};
     char* p = NULL;
     while(1){

@@ -5,9 +5,12 @@
 #include "WCJson.h"
 #include "WCUtil.h"
 #include "WCInput.h"
+#include "WCFileServer.h"
 
 int main(int argc, char* argv[])
 {
+    WCFileServer::instance();
+
 
     WCNetwork *network = WCNetwork::instance();
 

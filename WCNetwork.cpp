@@ -94,6 +94,8 @@ void WCNetwork::handleSendf(WCJson& json, uint32_t peerip)
     string file = json.get(WC_FILE);
     printf("ready to receive file %s, from %s\n", file.c_str(), name.c_str());
 
+    printf("peerip : %s\n", WCUtil::ipaddr(peerip).c_str());
+
     //recv
     new WCFileRecv(file, peerip);
 }
