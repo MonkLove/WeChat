@@ -15,6 +15,7 @@ void showMenu()
     printf("* All the command supported :               *\n");
     printf("*   1) send <ip address> <message>          *\n");
     printf("*   2) sendf <ip address> <file name>       *\n");
+    printf("*   3) list                                 *\n");
     printf("*********************************************\n");
 }
 
