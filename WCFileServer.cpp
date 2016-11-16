@@ -16,10 +16,12 @@
 
 WCFileServer::WCFileServer()
 {
-    pid_t pid = fork();
-    if(pid == 0){
-        startServer();
-    }
+
+}
+
+WCFileServer::~WCFileServer()
+{
+    printf("file server desctructor\n");
 }
 
 WCFileServer* WCFileServer::instance()
@@ -31,28 +33,34 @@ WCFileServer* WCFileServer::instance()
     return obj;
 }
 
-void WCFileServer::startServer()
+void WCFileServer::runFileServer()
 {
+    pid_t pid = fork();
+    if(pid == 0){
+        startServer();
+    }
+}
+
+void WCFileServer::startServer()
+{   
     _listenfd = createSocket();
 
-    FD_ZERO(&_clifds);
-    FD_SET(_listenfd, &_clifds);
     _maxFds = _listenfd;
     while(1){
-        fd_set fds;
-        struct timeval tv = { 2, 0};
-       // memcpy(&fds, &_clifds, sizeof(fds));
+        fd_set fds;        
         FD_SET(_listenfd, &fds);
+        struct timeval tv = { 2, 0};
 
         switch(select(_maxFds + 1, &fds, NULL, NULL, &tv)){
         case -1 :{
                 if(errno == EAGAIN)
                     continue;
+                perror("select");
                 exit(-1);
             }
             break;
         case 0 :{
-//                printf("time out\n");
+            // Time out
                 continue;
             }
             break;
@@ -62,33 +70,13 @@ void WCFileServer::startServer()
                 recvData(fds);
             }
         }
-
-#if 0
-        int count = select(_maxFds + 1, &fds, NULL, NULL, &tv);
-        if(count > 0){
-            if(FD_ISSET(_listenfd, &fds)){
-                add2select(fds);
-            }
-
-            recvData(fds);
-
-        }else{
-            if(count == 0){
-                continue;
-            }else{
-                perror("select");
-                exit(-1);
-            }
-        }
-#endif
     }
-
 }
 
 void WCFileServer::recvData(fd_set& fds)
 {
     char buf[MAX_MSG_LEN] = {};
-    //char *ret = NULL;
+
     for(int fd = 3; fd < MAX_FDS + 1; ++fd){
         if(FD_ISSET(_listenfd, &fds)){
             continue;
@@ -98,36 +86,35 @@ void WCFileServer::recvData(fd_set& fds)
             fgets(buf, sizeof(buf), fp);
             buf[strlen(buf) - 1] = 0;
 
-            printf("recv len : %d\n", strlen(buf));
-			printf("recv data path : %s\n", buf);
-
-            //fclose(fp);   fp closed and the fd will be closed;
-            FD_CLR(fd, &_clifds);
-
             sendFile(fd, buf);
-        }
-        //close(fd);
-    }
-    ////////////////////////////
 
+            FILE* fptr = fdopen(fd, "w");
+            if(fptr == NULL){
+                perror("fdopen");
+            }
+            fprintf(fptr, "%s\n", WC_FILEEOF);
+
+            fflush(fptr);
+
+            recv(fd, buf, 1, 0);  // wait client to close the socket
+            close(fd);
+            FD_CLR(fd, &fds);
+
+            printf(">>>");
+            fflush(stdout);
+        }
+    }
 }
 
 void WCFileServer::sendFile(int fd, char* path)
 {
-    //FILE* fp = fdopen(fd, "w");
-    _realPath[128] = {};
-    _relativePath[128] = {};
+    memset(_realPath, 0, sizeof(_realPath));
+    memset(_relativePath, 0, sizeof(_relativePath));
     realpath(path, _realPath);  /* Get absolute path */
 
     char* pos = rindex(_realPath, '/');
-    //*pos = 0;  /* Truncate and get absolute path */
     memcpy(_relativePath, pos + 1, strlen(pos + 1));
-#if 0
-    *pos = '/';
-    *(pos -1) = '.';
-#endif
-    // Change path ?
-	printf("send file..\n");
+
     struct stat st;
     lstat(path, &st);
     if(S_ISREG(st.st_mode)){
@@ -135,37 +122,24 @@ void WCFileServer::sendFile(int fd, char* path)
     }else if(S_ISDIR(st.st_mode)){
         sendFileDir(fd, path);
     }else if(S_ISLNK(st.st_mode)){
-        //
+        // Do something;
     }else{
         printf("Unknown file type");
     }
-
-    //fprintf(fp, "%s\n", WC_FILEEOF);
-    //fflush(fp);
-
-    close(fd);
 }
 
 void WCFileServer::sendFileReg(int fd, char *path)
 {
-    printf("file descriptor : %d\n", fd);
     FILE* fp = fdopen(fd, "w");
     if(fp == NULL){
         perror("fdopen");
     }
 
-    int ret = fprintf(fp, "%s\n", WC_SENTINEL);
-    printf(" fprintf ret : %d\n", ret);
-
-
-
+    fprintf(fp, "%s\n", WC_SENTINEL);
     fprintf(fp, "%s\n", WC_FILE_REG);
     fprintf(fp, "%s\n", _relativePath);
     fprintf(fp, "%llu\n", (long long unsigned)WCUtil::getFileSize(_realPath));
-
-    printf("file size : %d\n", WCUtil::getFileSize(_realPath));
-
-     fflush(fp);
+    fflush(fp);
 
     char buf[MAX_MSG_LEN];
     FILE* fptr = fopen(_realPath, "r");
@@ -173,17 +147,17 @@ void WCFileServer::sendFileReg(int fd, char *path)
         perror("fopen");
     }
     while(1){
+        memset(buf, 0, sizeof(buf));
         int ret = fread(buf, 1, sizeof(buf), fptr);
-        printf("read file : %s\n", buf);
 
         if(ret <= 0){
             break;
         }
         ret = fwrite(buf, ret, 1, fp);
-        fflush(fp);
         if(ret != 1){
             exit(1);
         }
+        fflush(fp);
     }
     fclose(fptr);
 }
@@ -194,16 +168,15 @@ void WCFileServer::sendFileDir(int fd, char *path)
     fprintf(fp, "%s\n", WC_SENTINEL);
     fprintf(fp, "%s\n", WC_FILE_DIR);
     fprintf(fp, "%s\n", _relativePath);
+    fflush(fp);
 
     DIR* dir = opendir(_realPath);
     struct dirent* entry;
-    //char newpath[128] = {};
     while(entry = readdir(dir)){
         if(string(entry->d_name) == "." ||
                 string(entry->d_name) == "..")
             continue;
 
-      //  sprintf(newpath, "%s/%s", path,entry->d_name);
         sprintf(_relativePath, "%s/%s", _relativePath, entry->d_name);
         sprintf(_realPath, "%s/%s", _realPath, entry->d_name);
         if(entry->d_type == DT_DIR){
@@ -218,16 +191,10 @@ void WCFileServer::sendFileDir(int fd, char *path)
 void WCFileServer::add2select(fd_set& fds)
 {
 ACCEPT:
-     printf("waiting to connect ...\n"); ///
     int connfd = accept(_listenfd, NULL, NULL);
-    printf("connfd : %d\n", connfd);
     if(connfd > 0){
-        printf("accept data ...\n"); ///
-        /// \brief FD_SET
         FD_SET(connfd, &fds);
-        FD_SET(connfd, &_clifds);
         _maxFds = _maxFds > connfd ? _maxFds : connfd;
-//        _clifds.push_back(connfd);
     }else{
         if(errno == EAGAIN){
             goto ACCEPT;
@@ -255,9 +222,10 @@ int WCFileServer::createSocket()
         perror("bind");
         exit(-1);
     }
-    err = listen(fd, 60);
+    int flag = 1;
+    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (void*)&flag, sizeof(flag));
 
-    //printf("start listening \n");
+    err = listen(fd, 60);
 
     return fd;
 }

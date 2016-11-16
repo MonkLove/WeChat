@@ -19,7 +19,7 @@
 #define WC_FILE        "file"
 
 #define WC_SENTINEL   "xxxx"
-#define WC_FILEEOF    "0"
+#define WC_FILEEOF    "eof"
 #define WC_FILE_REG    "reg"
 #define WC_FILE_DIR    "dir"
 

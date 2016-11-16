@@ -9,7 +9,6 @@ class WCFileServer
 {
 private:
     int _listenfd;
-    fd_set _clifds;
     uint32_t _maxFds;
 
     char _realPath[128];
@@ -24,6 +23,8 @@ private:
     void sendFileReg(int fd, char* path);
     void sendFileDir(int fd, char* path);
 public:
+    ~WCFileServer();
+    void runFileServer();
     static WCFileServer* instance();
     void startServer();
 };

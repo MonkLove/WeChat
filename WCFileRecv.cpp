@@ -45,13 +45,7 @@ void WCFileRecv::start()
     }
 
     err = write(fd, _path.c_str(), strlen(_path.c_str()));
-
-    printf("ack success -- %s\n", _path.c_str());
-
     err = write(fd, "\n", 1);
-
-
-    printf("ret : %d\n", err);
 
     recvFile(fd);
 }
@@ -68,7 +62,6 @@ char* WCFileRecv::getLine(FILE* fp)
 
 void WCFileRecv::recvFile(uint32_t fd)
 {
-    printf("start recv file ...\n");
     FILE* fp = fdopen(fd, "r");
     if(fp == NULL){
         perror("fdopen");
@@ -77,8 +70,10 @@ void WCFileRecv::recvFile(uint32_t fd)
     char* p = NULL;
     while(1){
         p = getLine(fp);
-        if(strcmp(p, WC_FILEEOF) == 0)
+        if(strcmp(p, WC_FILEEOF) == 0){
+            printf("end fo file\n");
             break;
+        }
 
         if(strcmp(p, WC_SENTINEL) != 0)       // 1 sentinel
             return;
@@ -95,20 +90,19 @@ void WCFileRecv::recvFile(uint32_t fd)
             while(filelen > 0){
                 int readlen = filelen > sizeof(buf) ? sizeof(buf) : filelen;
                 int ret = fread(buf, 1, readlen, fp);
-                if(ret > 0){
-                    printf("recv file content : %s\n", buf);
-                }
                 fwrite(buf, ret, 1, fptr);
                 filelen -= ret;
             }
             fclose(fptr);
-            break;
         }else{
             printf("Unknown file type\n");
             return;
         }
-    }
+    }  
     fclose(fp);
+
+    printf(">>>");
+    fflush(stdout);
 }
 
 

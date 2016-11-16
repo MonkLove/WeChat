@@ -116,7 +116,7 @@ void WCInput::cmdsend()
         json.add(WC_MSG, msg);
     }
 
-    //DEBUG(msg.c_str());
+    DEBUG(msg.c_str());
 
     WCNetwork::instance()->send(json.print(), inet_addr(ip.c_str()));
 }
